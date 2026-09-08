@@ -1,0 +1,302 @@
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>リセットパズル</title>
+
+<style>
+    body {
+        background: #222;
+        color: white;
+        text-align: center;
+        font-family: sans-serif;
+    }
+
+    #game {
+        display: grid;
+        grid-template-columns: repeat(9, 50px);
+        grid-template-rows: repeat(7, 50px);
+        gap: 2px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .cell {
+        width: 50px;
+        height: 50px;
+        background: #eee;
+        color: black;
+        font-size: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .wall {
+        background: #333;
+    }
+
+    .player {
+        background: #4caf50;
+    }
+
+    .block {
+        background: #d88;
+    }
+
+    .goal {
+        background: gold;
+    }
+
+    button {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 16px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>リセットパズル</h1>
+
+<p>
+    矢印キー / WASD：移動<br>
+    Rキー：リセット
+</p>
+
+<div id="game"></div>
+
+<button onclick="resetObjects()">🔄 リセット</button>
+
+<script>
+
+const map = [
+    "#########",
+    "##......#",
+    "#..####.#",
+    "#.......#",
+    "#B######",
+    "#.######",
+    "#...B.G##"
+];
+
+const startPlayer = {
+    x: 3,
+    y: 3
+};
+
+let player = {
+    x: startPlayer.x,
+    y: startPlayer.y
+};
+
+const startBlocks = [
+    { x: 1, y: 4 },
+    { x: 4, y: 6 }
+];
+
+let blocks = startBlocks.map(b => ({...b}));
+
+const goal = {
+    x: 6,
+    y: 6
+};
+
+const game = document.getElementById("game");
+
+
+/* --------------------
+   ゲーム画面を描画
+-------------------- */
+
+function draw() {
+
+    game.innerHTML = "";
+
+    for (let y = 0; y < 7; y++) {
+
+        for (let x = 0; x < 9; x++) {
+
+            const cell = document.createElement("div");
+            cell.className = "cell";
+
+            const tile = map[y][x];
+
+            if (tile === "#") {
+                cell.classList.add("wall");
+            }
+
+            // ゴール
+            if (x === goal.x && y === goal.y) {
+                cell.classList.add("goal");
+                cell.textContent = "G";
+            }
+
+            // ブロック
+            const block = blocks.find(
+                b => b.x === x && b.y === y
+            );
+
+            if (block) {
+                cell.classList.add("block");
+                cell.textContent = "B";
+            }
+
+            // プレイヤー
+            if (player.x === x && player.y === y) {
+                cell.classList.add("player");
+                cell.textContent = "P";
+            }
+
+            game.appendChild(cell);
+        }
+    }
+}
+
+
+/* --------------------
+   壁判定
+-------------------- */
+
+function isWall(x, y) {
+
+    if (y < 0 || y >= map.length) {
+        return true;
+    }
+
+    if (x < 0 || x >= map[y].length) {
+        return true;
+    }
+
+    return map[y][x] === "#";
+}
+
+
+/* --------------------
+   ブロック検索
+-------------------- */
+
+function getBlock(x, y) {
+
+    return blocks.find(
+        b => b.x === x && b.y === y
+    );
+}
+
+
+/* --------------------
+   プレイヤー移動
+-------------------- */
+
+function move(dx, dy) {
+
+    const nx = player.x + dx;
+    const ny = player.y + dy;
+
+    // 壁なら移動しない
+    if (isWall(nx, ny)) {
+        return;
+    }
+
+    // 移動先にブロックがあるか
+    const block = getBlock(nx, ny);
+
+    if (block) {
+
+        // ブロックの移動先
+        const bx = block.x + dx;
+        const by = block.y + dy;
+
+        // ブロックを押せない場合
+        if (
+            isWall(bx, by) ||
+            getBlock(bx, by)
+        ) {
+            return;
+        }
+
+        // ブロックを押す
+        block.x = bx;
+        block.y = by;
+    }
+
+    // プレイヤーを移動
+    player.x = nx;
+    player.y = ny;
+
+    draw();
+}
+
+
+/* --------------------
+   リセット
+-------------------- */
+
+function resetObjects() {
+
+    // プレイヤーとブロックが重なっているか確認
+    const isOverlapping = blocks.some(
+        b => b.x === player.x && b.y === player.y
+    );
+
+    // ブロックを初期位置へ戻す
+    blocks = startBlocks.map(
+        b => ({...b})
+    );
+
+    /*
+        プレイヤーとブロックが重なっていた場合
+        ステージ全体をリセット
+    */
+    if (isOverlapping) {
+
+        player.x = startPlayer.x;
+        player.y = startPlayer.y;
+
+        alert("プレイヤーがブロックと重なったため、ステージをリセットしました！");
+    }
+
+    draw();
+}
+
+
+/* --------------------
+   キー操作
+-------------------- */
+
+document.addEventListener("keydown", e => {
+
+    if (e.key === "ArrowUp" || e.key === "w") {
+        move(0, -1);
+    }
+
+    if (e.key === "ArrowDown" || e.key === "s") {
+        move(0, 1);
+    }
+
+    if (e.key === "ArrowLeft" || e.key === "a") {
+        move(-1, 0);
+    }
+
+    if (e.key === "ArrowRight" || e.key === "d") {
+        move(1, 0);
+    }
+
+    if (e.key === "r" || e.key === "R") {
+        resetObjects();
+    }
+});
+
+
+/* --------------------
+   開始
+-------------------- */
+
+draw();
+
+</script>
+
+</body>
+</html>
