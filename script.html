@@ -3,35 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>現在地 ＋ 半径1km以内の避難所マップ</title>
+  <title>現在地 ＋ 避難所マップ</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <style>
     #map {
-      height: 550px;
+      height: 500px;
       width: 100%;
       margin-top: 10px;
+    }
+    /* CSV一覧表のスタイリング */
+    #table-container {
+      margin-top: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+      position: sticky;
+      top: 0;
     }
   </style>
 </head>
 <body>
 
-<button onclick="getLocation()">現在地を取得して半径1km以内を表示</button>
+<button onclick="getLocation()">現在地を取得して避難所を表示</button>
 <p id="result">ボタンを押して現在地を取得してください</p>
 
 <h1>避難所マップ</h1>
 <div id="map"></div>
 
+<!-- 読み込んだCSVデータを表示するエリア -->
+<div id="csv-section" style="display: none;">
+  <h2>読み込んだ避難所一覧（CSVデータ）</h2>
+  <div id="table-container">
+    <table id="shelter-table">
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>住所</th>
+          <th>緯度</th>
+          <th>経度</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  // 地図の初期化
-  const map = L.map("map").setView([35.0116, 135.7681], 12);
+  // 地図の初期化（初期設定）
+  const map = L.map("map").setView([34.6853, 135.8050], 12);
 
-  // 地図タイルの表示（普通の標準マップ）
+  // 地図タイルの表示
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
@@ -46,8 +86,6 @@
     shadowSize: [41, 41]
   });
 
-  // 避難所データを保持する配列とピン管理レイヤー
-  let shelterDataList = [];
   const shelterLayerGroup = L.layerGroup().addTo(map);
   let currentMarker = null;
 
@@ -72,44 +110,7 @@
   }
 
   // --------------------------------------------------
-  // 1. バックグラウンドでCSVデータを保持（初期表示ではピンを立てない）
-  // --------------------------------------------------
-  function loadShelterCSV() {
-    fetch("261009_evacuation_space.csv")
-      .then(res => res.text())
-      .then(csvText => {
-        const lines = csvText.trim().split(/\r?\n/);
-        if (lines.length < 2) return;
-
-        const headers = parseCSVLine(lines[0]);
-        const nameIdx = headers.indexOf("名称");
-        const latIdx = headers.indexOf("緯度");
-        const lngIdx = headers.indexOf("経度");
-        const addressIdx = headers.indexOf("所在地_連結表記");
-
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i]) continue;
-          const row = parseCSVLine(lines[i]);
-          const lat = parseFloat(row[latIdx]);
-          const lng = parseFloat(row[lngIdx]);
-
-          if (!isNaN(lat) && !isNaN(lng)) {
-            shelterDataList.push({
-              name: row[nameIdx] || "避難所",
-              lat: lat,
-              lng: lng,
-              address: addressIdx !== -1 ? (row[addressIdx] || "") : ""
-            });
-          }
-        }
-      })
-      .catch(err => console.error("CSV読み込みエラー:", err));
-  }
-
-  loadShelterCSV();
-
-  // --------------------------------------------------
-  // 2. 現在地を取得し、半径1km以内の避難所ピンのみを表示
+  // 現在地を取得した後に実行される処理
   // --------------------------------------------------
   function getLocation() {
     const resultElement = document.getElementById("result");
@@ -125,45 +126,85 @@
       function(position) {
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
-        const userLatLng = L.latLng(userLat, userLng);
 
-        // 地図を現在地に移動（拡大率15）
+        resultElement.textContent = `現在地を取得しました (緯度: ${userLat.toFixed(4)}, 経度: ${userLng.toFixed(4)})`;
+
+        // 地図を現在地に移動（ズームレベル 15）
         map.setView([userLat, userLng], 15);
 
-        // 既存の現在地ピン・避難所ピンをすべてクリア
+        // 既存の現在地ピンを削除して、新しい青いピンを設置
         if (currentMarker) map.removeLayer(currentMarker);
-        shelterLayerGroup.clearLayers();
-
-        // 現在地に青いピンを表示
         currentMarker = L.marker([userLat, userLng])
           .addTo(map)
           .bindPopup("<b>あなたの現在地</b>")
           .openPopup();
 
-        let count = 0;
-
-        // 半径1km（1000m）以内の避難所のみピンを追加
-        shelterDataList.forEach(shelter => {
-          const shelterLatLng = L.latLng(shelter.lat, shelter.lng);
-          const distance = userLatLng.distanceTo(shelterLatLng); // 距離（メートル）
-
-          if (distance <= 1000) {
-            count++;
-            const distanceText = `${Math.round(distance)}m`;
-            
-            L.marker([shelter.lat, shelter.lng], { icon: shelterIcon })
-              .bindPopup(`<b>${shelter.name}</b><br>現在地から: 約${distanceText}<br>${shelter.address}`)
-              .addTo(shelterLayerGroup);
-          }
-        });
-
-        resultElement.textContent = `現在地を取得しました。半径1km以内に ${count} 件の避難所があります。`;
+        // ★ 現在地を取得した後に CSV を読み込んで地図＆表に表示する
+        loadAndDisplayShelterCSV();
       },
       function(error) {
         resultElement.textContent = "現在地を取得できませんでした。";
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  }
+
+  // --------------------------------------------------
+  // CSV（29000_1.csv）を読み込んでピンと一覧表を表示する処理
+  // --------------------------------------------------
+  function loadAndDisplayShelterCSV() {
+    fetch("29000_1.csv")
+      .then(res => {
+        if (!res.ok) throw new Error("29000_1.csv の読み込みに失敗しました。");
+        return res.text();
+      })
+      .then(csvText => {
+        const lines = csvText.trim().split(/\r?\n/);
+        if (lines.length < 2) return;
+
+        const headers = parseCSVLine(lines[0]);
+        const nameIdx = headers.indexOf("名称") !== -1 ? headers.indexOf("名称") : headers.indexOf("施設名称");
+        const latIdx = headers.indexOf("緯度") !== -1 ? headers.indexOf("緯度") : headers.indexOf("lat");
+        const lngIdx = headers.indexOf("経度") !== -1 ? headers.indexOf("経度") : headers.indexOf("lng");
+        const addressIdx = headers.indexOf("所在地_連結表記") !== -1 ? headers.indexOf("所在地_連結表記") : headers.indexOf("住所");
+
+        // 一覧表の要素を取得してクリア
+        const tableBody = document.querySelector("#shelter-table tbody");
+        tableBody.innerHTML = "";
+        shelterLayerGroup.clearLayers();
+
+        let count = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i]) continue;
+          const row = parseCSVLine(lines[i]);
+          const lat = parseFloat(row[latIdx]);
+          const lng = parseFloat(row[lngIdx]);
+          const name = row[nameIdx] || "避難所";
+          const address = addressIdx !== -1 ? (row[addressIdx] || "") : "";
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            // 1. 地図上にピン（赤色）を追加
+            L.marker([lat, lng], { icon: shelterIcon })
+              .addTo(shelterLayerGroup)
+              .bindPopup(`<b>${name}</b><br>${address}`);
+
+            // 2. CSV一覧表に行を追加
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${name}</td><td>${address}</td><td>${lat}</td><td>${lng}</td>`;
+            tableBody.appendChild(tr);
+
+            count++;
+          }
+        }
+
+        // CSVデータの表を表示
+        document.getElementById("csv-section").style.display = "block";
+      })
+      .catch(err => {
+        console.error("CSVエラー:", err);
+        alert("CSVファイルの読み込みに失敗しました。ファイル名が '29000_1.csv' であるか確認してください。");
+      });
   }
 </script>
 
