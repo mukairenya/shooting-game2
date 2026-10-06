@@ -1,301 +1,170 @@
-```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>リセットパズル</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>現在地 ＋ 半径1km以内の避難所マップ</title>
 
-<style>
-    body {
-        background: #222;
-        color: white;
-        text-align: center;
-        font-family: sans-serif;
-    }
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
-    #game {
-        display: grid;
-        grid-template-columns: repeat(9, 50px);
-        grid-template-rows: repeat(7, 50px);
-        gap: 2px;
-        justify-content: center;
-        margin-top: 20px;
+  <style>
+    #map {
+      height: 550px;
+      width: 100%;
+      margin-top: 10px;
     }
-
-    .cell {
-        width: 50px;
-        height: 50px;
-        background: #eee;
-        color: black;
-        font-size: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .wall {
-        background: #333;
-    }
-
-    .player {
-        background: #4caf50;
-    }
-
-    .block {
-        background: #d88;
-    }
-
-    .goal {
-        background: gold;
-    }
-
-    button {
-        margin-top: 15px;
-        padding: 10px 20px;
-        font-size: 16px;
-    }
-</style>
+  </style>
 </head>
-
 <body>
 
-<h1>リセットパズル</h1>
+<button onclick="getLocation()">現在地を取得して半径1km以内を表示</button>
+<p id="result">ボタンを押して現在地を取得してください</p>
 
-<p>
-    矢印キー / WASD：移動<br>
-    Rキー：リセット
-</p>
+<h1>避難所マップ</h1>
+<div id="map"></div>
 
-<div id="game"></div>
-
-<button onclick="resetObjects()">🔄 リセット</button>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+  // 地図の初期化
+  const map = L.map("map").setView([35.0116, 135.7681], 12);
 
-const map = [
-    "#########",
-    "##......#",
-    "#..####.#",
-    "#.......#",
-    "#B######",
-    "#.######",
-    "#...B.G##"
-];
+  // 地図タイルの表示（普通の標準マップ）
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
 
-const startPlayer = {
-    x: 3,
-    y: 3
-};
+  // 赤色の避難所用アイコン設定
+  const shelterIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
 
-let player = {
-    x: startPlayer.x,
-    y: startPlayer.y
-};
+  // 避難所データを保持する配列とピン管理レイヤー
+  let shelterDataList = [];
+  const shelterLayerGroup = L.layerGroup().addTo(map);
+  let currentMarker = null;
 
-const startBlocks = [
-    { x: 1, y: 4 },
-    { x: 4, y: 6 }
-];
+  // CSV解析関数（ダブルクォーテーション対応）
+  function parseCSVLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim());
+    return values;
+  }
 
-let blocks = startBlocks.map(b => ({...b}));
+  // --------------------------------------------------
+  // 1. バックグラウンドでCSVデータを保持（初期表示ではピンを立てない）
+  // --------------------------------------------------
+  function loadShelterCSV() {
+    fetch("261009_evacuation_space.csv")
+      .then(res => res.text())
+      .then(csvText => {
+        const lines = csvText.trim().split(/\r?\n/);
+        if (lines.length < 2) return;
 
-const goal = {
-    x: 6,
-    y: 6
-};
+        const headers = parseCSVLine(lines[0]);
+        const nameIdx = headers.indexOf("名称");
+        const latIdx = headers.indexOf("緯度");
+        const lngIdx = headers.indexOf("経度");
+        const addressIdx = headers.indexOf("所在地_連結表記");
 
-const game = document.getElementById("game");
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i]) continue;
+          const row = parseCSVLine(lines[i]);
+          const lat = parseFloat(row[latIdx]);
+          const lng = parseFloat(row[lngIdx]);
 
-
-/* --------------------
-   ゲーム画面を描画
--------------------- */
-
-function draw() {
-
-    game.innerHTML = "";
-
-    for (let y = 0; y < 7; y++) {
-
-        for (let x = 0; x < 9; x++) {
-
-            const cell = document.createElement("div");
-            cell.className = "cell";
-
-            const tile = map[y][x];
-
-            if (tile === "#") {
-                cell.classList.add("wall");
-            }
-
-            // ゴール
-            if (x === goal.x && y === goal.y) {
-                cell.classList.add("goal");
-                cell.textContent = "G";
-            }
-
-            // ブロック
-            const block = blocks.find(
-                b => b.x === x && b.y === y
-            );
-
-            if (block) {
-                cell.classList.add("block");
-                cell.textContent = "B";
-            }
-
-            // プレイヤー
-            if (player.x === x && player.y === y) {
-                cell.classList.add("player");
-                cell.textContent = "P";
-            }
-
-            game.appendChild(cell);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            shelterDataList.push({
+              name: row[nameIdx] || "避難所",
+              lat: lat,
+              lng: lng,
+              address: addressIdx !== -1 ? (row[addressIdx] || "") : ""
+            });
+          }
         }
+      })
+      .catch(err => console.error("CSV読み込みエラー:", err));
+  }
+
+  loadShelterCSV();
+
+  // --------------------------------------------------
+  // 2. 現在地を取得し、半径1km以内の避難所ピンのみを表示
+  // --------------------------------------------------
+  function getLocation() {
+    const resultElement = document.getElementById("result");
+
+    if (!navigator.geolocation) {
+      resultElement.textContent = "このブラウザは位置情報に対応していません。";
+      return;
     }
-}
 
+    resultElement.textContent = "現在地を取得中...";
 
-/* --------------------
-   壁判定
--------------------- */
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+        const userLatLng = L.latLng(userLat, userLng);
 
-function isWall(x, y) {
+        // 地図を現在地に移動（拡大率15）
+        map.setView([userLat, userLng], 15);
 
-    if (y < 0 || y >= map.length) {
-        return true;
-    }
+        // 既存の現在地ピン・避難所ピンをすべてクリア
+        if (currentMarker) map.removeLayer(currentMarker);
+        shelterLayerGroup.clearLayers();
 
-    if (x < 0 || x >= map[y].length) {
-        return true;
-    }
+        // 現在地に青いピンを表示
+        currentMarker = L.marker([userLat, userLng])
+          .addTo(map)
+          .bindPopup("<b>あなたの現在地</b>")
+          .openPopup();
 
-    return map[y][x] === "#";
-}
+        let count = 0;
 
+        // 半径1km（1000m）以内の避難所のみピンを追加
+        shelterDataList.forEach(shelter => {
+          const shelterLatLng = L.latLng(shelter.lat, shelter.lng);
+          const distance = userLatLng.distanceTo(shelterLatLng); // 距離（メートル）
 
-/* --------------------
-   ブロック検索
--------------------- */
+          if (distance <= 1000) {
+            count++;
+            const distanceText = `${Math.round(distance)}m`;
+            
+            L.marker([shelter.lat, shelter.lng], { icon: shelterIcon })
+              .bindPopup(`<b>${shelter.name}</b><br>現在地から: 約${distanceText}<br>${shelter.address}`)
+              .addTo(shelterLayerGroup);
+          }
+        });
 
-function getBlock(x, y) {
-
-    return blocks.find(
-        b => b.x === x && b.y === y
+        resultElement.textContent = `現在地を取得しました。半径1km以内に ${count} 件の避難所があります。`;
+      },
+      function(error) {
+        resultElement.textContent = "現在地を取得できませんでした。";
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-}
-
-
-/* --------------------
-   プレイヤー移動
--------------------- */
-
-function move(dx, dy) {
-
-    const nx = player.x + dx;
-    const ny = player.y + dy;
-
-    // 壁なら移動しない
-    if (isWall(nx, ny)) {
-        return;
-    }
-
-    // 移動先にブロックがあるか
-    const block = getBlock(nx, ny);
-
-    if (block) {
-
-        // ブロックの移動先
-        const bx = block.x + dx;
-        const by = block.y + dy;
-
-        // ブロックを押せない場合
-        if (
-            isWall(bx, by) ||
-            getBlock(bx, by)
-        ) {
-            return;
-        }
-
-        // ブロックを押す
-        block.x = bx;
-        block.y = by;
-    }
-
-    // プレイヤーを移動
-    player.x = nx;
-    player.y = ny;
-
-    draw();
-}
-
-
-/* --------------------
-   リセット
--------------------- */
-
-function resetObjects() {
-
-    // プレイヤーとブロックが重なっているか確認
-    const isOverlapping = blocks.some(
-        b => b.x === player.x && b.y === player.y
-    );
-
-    // ブロックを初期位置へ戻す
-    blocks = startBlocks.map(
-        b => ({...b})
-    );
-
-    /*
-        プレイヤーとブロックが重なっていた場合
-        ステージ全体をリセット
-    */
-    if (isOverlapping) {
-
-        player.x = startPlayer.x;
-        player.y = startPlayer.y;
-
-        alert("プレイヤーがブロックと重なったため、ステージをリセットしました！");
-    }
-
-    draw();
-}
-
-
-/* --------------------
-   キー操作
--------------------- */
-
-document.addEventListener("keydown", e => {
-
-    if (e.key === "ArrowUp" || e.key === "w") {
-        move(0, -1);
-    }
-
-    if (e.key === "ArrowDown" || e.key === "s") {
-        move(0, 1);
-    }
-
-    if (e.key === "ArrowLeft" || e.key === "a") {
-        move(-1, 0);
-    }
-
-    if (e.key === "ArrowRight" || e.key === "d") {
-        move(1, 0);
-    }
-
-    if (e.key === "r" || e.key === "R") {
-        resetObjects();
-    }
-});
-
-
-/* --------------------
-   開始
--------------------- */
-
-draw();
-
+  }
 </script>
 
 </body>
