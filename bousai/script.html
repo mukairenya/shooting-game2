@@ -1,0 +1,75 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>防災情報・避難所マップ</title>
+
+  <link rel="stylesheet" href="./script.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</body>
+</html>
+</head>
+<body>
+  <div class="contents">
+    <div class="container">
+<p><h1 style="color: white;">防災情報・避難所マップ</h1></p>
+</div>
+</div>
+  <button onclick="getLocation()">現在地を取得して避難所を表示</button>
+  <p id="result">ボタンを押して現在地を取得してください。</p>
+
+  <h2>避難所マップ</h2>
+  <div id="map"></div>
+
+  <section id="csv-section" hidden>
+    <h2>避難所一覧</h2>
+    <div id="table-container">
+      <table id="shelter-table">
+        <thead>
+          <tr>
+            <th>名称</th>
+            <th>住所</th>
+            <th>緯度</th>
+            <th>経度</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="info-links">
+    <h2>災害情報を確認する</h2>
+    <a href="https://www.river.go.jp/" target="_blank" rel="noopener">国土交通省・川の防災情報</a>
+    <a href="https://www.jma.go.jp/bosai/" target="_blank" rel="noopener">気象庁・防災情報</a>
+    <a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake" target="_blank" rel="noopener">気象庁・地震情報</a>
+    <a href="https://www.jma.go.jp/bosai/map.html?contents=typhoon" target="_blank" rel="noopener">気象庁・台風情報</a>
+    <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>
+  </section>
+
+  <section>
+    <h2>防災意識チェック</h2>
+    <p>10個の質問に回答して、自分の防災準備を確認しましょう。これは自己評価用の仮アンケートです。</p>
+
+    <div id="quiz">
+      <p id="quiz-progress"></p>
+      <div id="quiz-question"></div>
+      <div id="quiz-choices"></div>
+      <p id="quiz-message" role="status"></p>
+
+      <button id="quiz-next" type="button" onclick="nextQuestion()">決定して次へ</button>
+
+      <div id="quiz-finish" hidden>
+        <p id="quiz-result"></p>
+        <p id="quiz-comment"></p>
+        <button type="button" onclick="restartQuiz()">もう一度回答する</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>

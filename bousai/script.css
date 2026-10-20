@@ -1,0 +1,103 @@
+
+.A{
+  color: red;
+}
+.contents{
+  width:1500px;
+  height:200px;
+  background-color: rgb(106,106,106);
+}
+.container {
+  font-family: arial;
+  font-size: 24px;
+  margin: 25px;
+  width: 750px;
+  height: 200px;
+}
+
+p {
+  /* 水平方向の中央揃え */
+  text-align: center;
+}
+body {
+  font-family: sans-serif;
+  margin: 20px;
+  line-height: 1.6;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 5px 0;
+  cursor: pointer;
+}
+
+#map {
+  height: 500px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+section {
+  margin-top: 30px;
+}
+
+.info-links a {
+  display: block;
+  margin: 8px 0;
+}
+
+#table-container {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background: #f2f2f2;
+  position: sticky;
+  top: 0;
+}
+
+#quiz {
+  max-width: 650px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+#quiz fieldset {
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.choice {
+  display: block;
+  padding: 8px;
+  margin: 6px 0;
+  cursor: pointer;
+}
+
+#quiz-result {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+[hidden] {
+  display: none !important;
+}
+
