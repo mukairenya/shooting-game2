@@ -1,0 +1,136 @@
+
+.contents {
+    width: 500px;
+    height: 300px;
+    background-color: red;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    text-align: center;
+}
+
+/* =========================
+  地図表示エリア
+  - 幅は親要素に追従
+  - 高さは固定（レスポンシブ対応）
+========================= */
+.map {
+  height: 400px;
+}
+
+/* スマホ画面では高さを少し低く */
+@media (max-width: 767px) {
+  .map {
+    height: 300px;
+  }
+}
+
+/* =========================
+  現在地ドット（AdvancedMarkerElement内のcontent）
+  - 青い点＋白い縁取りで視認性を確保
+========================= */
+.my-location-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1a73e8; /* 青（Googleマップ風） */
+  box-shadow: 0 0 0 3px #fff; /* 白い外枠で地図上でも見やすく */
+}
+
+/* ドットの外側に広がる波紋アニメーション */
+.my-location-dot::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: -6px; /* 外側へ6px広げる */
+  border: 2px solid rgba(26, 115, 232, .35);
+  border-radius: 50%;
+  animation: pulse 1600ms ease-out infinite;
+}
+
+/* 波紋の拡大アニメーション */
+@keyframes pulse {
+  0% { transform: scale(0.8); opacity: .8; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* =========================
+  ステータス表示
+  - 成功・失敗を色分けで強調
+========================= */
+.status-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.status {
+  font-size: 16px;
+  line-height: 1.7;
+  text-align: left;
+}
+
+@media (max-width: 767px) {
+  .status {
+    font-size: 15px;
+  }
+}
+
+/* 強調テキスト（成功／失敗） */
+.status strong {
+  font-weight: 700;
+}
+
+.status strong.is-success {
+  color: #15803d; /* 緑（成功メッセージ） */
+}
+
+.status strong.is-error {
+  color: #b91c1c; /* 赤（エラーメッセージ） */
+}
+
+/* =========================
+  「現在地へ移動」ボタン
+  - 見た目と操作感のスタイル定義
+========================= */
+.btn {
+  display: block;
+  margin: 20px auto 0;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 5px;
+  background: #c11a51;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  appearance: none;
+  transition: background-color 300ms;
+}
+
+@media (max-width: 767px) {
+  .btn {
+    padding: 15px 25px;
+  }
+}
+
+@media (min-width: 768px) {
+  .btn:hover {
+    background: #890631;
+  }
+}
+
+/* 無効状態（位置情報取得中） */
+.btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

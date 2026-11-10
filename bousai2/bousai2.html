@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initiale=1.0">
+        <title>防災情報・避難マップ</title>
+        <link rel="stylesheet" href="./bousai2.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  </body>
+  </html>
+</head>
+<body>
+        <div class="contents">
+    <div class="container">
+ <p><h1 style="color: black;">防災情報・避難所マップ</h1></p>
+</div>
+</body>
+         <section class="info-links">
+    <h2>公式の災害情報</h2>
+    <a href="https://www.river.go.jp/" target="_blank" rel="noopener">国土交通省・川の防災情報</a>
+    <a href="https://www.jma.go.jp/bosai/" target="_blank" rel="noopener">気象庁・防災情報</a>
+    <a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake" target="_blank" rel="noopener">気象庁・地震情報</a>
+    <a href="https://www.jma.go.jp/bosai/map.html?contents=typhoon" target="_blank" rel="noopener">気象庁・台風情報</a>
+    <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>
+  </section>
+
+  <!-- =========================
+  現在地取得デモ：HTML構造
+  （Googleマップ＋現在地ボタン＋ステータス表示）
+========================= -->
+<!-- 地図を表示するコンテナ -->
+<div id="map" class="map"></div>
+
+<!-- ステータス表示領域（メッセージをJavaScriptで更新） -->
+<div class="status-wrapper">
+  <p id="status" class="status">「現在地へ移動」を押してください。</p>
+</div>
+
+<!-- 現在地を取得して地図を移動させるボタン -->
+<button id="btn" class="btn" type="button">現在地へ移動</button>
+
+<!--
+  Google Maps JavaScript API の読み込みスクリプト
+  - key: Google Cloud で発行した API キーを指定してください
+  - v: 利用するバージョン。特に理由がなければ "weekly" のままで大丈夫です
+  この読み込みで、JavaScript 側から google.maps.importLibrary(...) が使えるようになります
+-->
+<script>
+  (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+    key: "YOUR_API_KEY",
+    v: "weekly",
+  });
+</script>
+
